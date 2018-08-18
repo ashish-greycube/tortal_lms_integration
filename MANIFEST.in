@@ -1,0 +1,18 @@
+include MANIFEST.in
+include requirements.txt
+include *.json
+include *.md
+include *.py
+include *.txt
+recursive-include tortal_lms_integration *.css
+recursive-include tortal_lms_integration *.csv
+recursive-include tortal_lms_integration *.html
+recursive-include tortal_lms_integration *.ico
+recursive-include tortal_lms_integration *.js
+recursive-include tortal_lms_integration *.json
+recursive-include tortal_lms_integration *.md
+recursive-include tortal_lms_integration *.png
+recursive-include tortal_lms_integration *.py
+recursive-include tortal_lms_integration *.svg
+recursive-include tortal_lms_integration *.txt
+recursive-exclude tortal_lms_integration *.pyc
