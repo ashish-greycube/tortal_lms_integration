@@ -5,7 +5,7 @@ from . import __version__ as app_version
 app_name = "tortal_lms_integration"
 app_title = "Tortal LMS Integration"
 app_publisher = "GreyCube Technologies"
-app_description = "Provide signle sign on for ERPNext user to Tortal LMS system"
+app_description = "Provide single sign on (SSO) for ERPNext user to Tortal LMS system"
 app_icon = "octicon octicon-key"
 app_color = "#0079bb"
 app_email = "admin@greycube.in"
@@ -20,7 +20,7 @@ app_license = "MIT"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/tortal_lms_integration/css/tortal_lms_integration.css"
-# web_include_js = "/assets/tortal_lms_integration/js/tortal_lms_integration.js"
+web_include_js = "/assets/tortal_lms_integration/js/tortal_lms_integration.js"
 
 # include js in page
 # page_js = {"page" : "public/js/file.js"}
@@ -90,23 +90,23 @@ app_license = "MIT"
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
-# 	"all": [
-# 		"tortal_lms_integration.tasks.all"
-# 	],
-# 	"daily": [
-# 		"tortal_lms_integration.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"tortal_lms_integration.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"tortal_lms_integration.tasks.weekly"
-# 	]
-# 	"monthly": [
-# 		"tortal_lms_integration.tasks.monthly"
-# 	]
-# }
+scheduler_events = {
+	# "all": [
+	# 	"tortal_lms_integration.tasks.all"
+	# ],
+	# "daily": [
+	# 	"tortal_lms_integration.tasks.daily"
+	# ],
+	"hourly": [
+		"tortal_lms_integration.tortal_lms_integration.doctype.tortal_lms_system_settings.tortal_lms_system_settings.take_uploads_hourly"
+	],
+	# "weekly": [
+	# 	"tortal_lms_integration.tasks.weekly"
+	# ]
+	# "monthly": [
+	# 	"tortal_lms_integration.tasks.monthly"
+	# ]
+}
 
 # Testing
 # -------

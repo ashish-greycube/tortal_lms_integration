@@ -15,7 +15,7 @@ with open('tortal_lms_integration/__init__.py', 'rb') as f:
 setup(
 	name='tortal_lms_integration',
 	version=version,
-	description='Provide signle sign on for ERPNext user to Tortal LMS system',
+	description='Provide single sign on (SSO) for ERPNext user to Tortal LMS system',
 	author='GreyCube Technologies',
 	author_email='admin@greycube.in',
 	packages=find_packages(),
