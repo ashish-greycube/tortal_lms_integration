@@ -94,15 +94,15 @@ scheduler_events = {
 	# "all": [
 	# 	"tortal_lms_integration.tasks.all"
 	# ],
-	# "daily": [
-	# 	"tortal_lms_integration.tasks.daily"
-	# ],
+	"daily": [
+		"tortal_lms_integration.tortal_lms_integration.doctype.tortal_lms_system_settings.tortal_lms_system_settings.take_uploads_daily"
+	],
 	"hourly": [
 		"tortal_lms_integration.tortal_lms_integration.doctype.tortal_lms_system_settings.tortal_lms_system_settings.take_uploads_hourly"
 	],
-	# "weekly": [
-	# 	"tortal_lms_integration.tasks.weekly"
-	# ]
+	"weekly": [
+		"tortal_lms_integration.tortal_lms_integration.doctype.tortal_lms_system_settings.tortal_lms_system_settings.take_uploads_weekly"
+	]
 	# "monthly": [
 	# 	"tortal_lms_integration.tasks.monthly"
 	# ]
@@ -120,3 +120,12 @@ scheduler_events = {
 # 	"frappe.desk.doctype.event.event.get_events": "tortal_lms_integration.event.get_events"
 # }
 
+
+fixtures = [
+    	{
+		"dt":"Custom Script",
+		"filters":[
+			["name", "in", ["User-Client"]],
+		]
+	}
+]

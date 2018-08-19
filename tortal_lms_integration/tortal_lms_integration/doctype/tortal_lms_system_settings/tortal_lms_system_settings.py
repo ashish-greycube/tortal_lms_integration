@@ -4,15 +4,14 @@
 
 from __future__ import unicode_literals
 import frappe
-import unittest
 import os
 from frappe import _
 from frappe.model.document import Document
 import ftplib
 import csv
+from frappe.utils import cint, split_emails, get_site_base_path, cstr, today,get_backups_path,get_datetime,get_bench_path,get_files_path
 from six import text_type
-from six.moves.urllib.parse import urlparse, parse_qs
-from frappe.utils import cint, split_emails
+from datetime import datetime, timedelta
 from frappe.utils.background_jobs import enqueue
 
 class TortalLMSSystemSettings(Document):
@@ -21,24 +20,39 @@ class TortalLMSSystemSettings(Document):
 def take_uploads_hourly():
 	take_uploads_if("Hourly")
 
+def take_uploads_daily():
+	take_uploads_if("Daily")
+
+
+def take_uploads_weekly():
+	take_uploads_if("Weekly")
+
 def take_uploads_if(freq):
 	if cint(frappe.db.get_value("Tortal LMS System Settings", None, "is_integration_active")):
 		upload_frequency = frappe.db.get_value("Tortal LMS System Settings", None, "frequency")
-		if freq == "Hourly" and upload_frequency in ["Every 6 Hours","Every 12 Hours"]:
+		if upload_frequency == freq:
+			take_upload_to_tortal()
+		elif freq == "Hourly" and upload_frequency in ["Every 6 Hours","Every 12 Hours"]:
 			last_upload_date = frappe.db.get_value('Tortal LMS System Settings', None, 'last_upload_date')
 			if upload_frequency == "Every 6 Hours":
 				upload_interval = 6
 			elif upload_frequency == "Every 12 Hours":
 				upload_interval = 12
-		
 			if datetime.now() - get_datetime(last_upload_date) >= timedelta(hours = upload_interval):
 				take_upload_to_tortal()	
 
 @frappe.whitelist()
 def take_upload_to_tortal():
 	try:
-		upload_to_tortal()
+		file_group_user_csv=create_tortal_group_user_csv()
+		file_tortal_user_csv=create_tortal_user_csv()
+		ftp=ftp_connect()
+		upload_to_tortal(ftp,file_group_user_csv)
+		upload_to_tortal(ftp,file_tortal_user_csv)
 		send_email(True, "Tortal LMS System Settings")
+		frappe.db.begin()
+		frappe.db.set_value('Tortal LMS System Settings', 'Tortal LMS System Settings', 'last_upload_date', datetime.now())
+		frappe.db.commit()
 	except Exception:
 		error_message = frappe.get_traceback()
 		frappe.errprint(error_message)
@@ -69,72 +83,64 @@ def send_email(success, service_name, error_status=None):
 
 
 @frappe.whitelist()
-def create_group_user_csv():
-	group_user_data = frappe.db.sql("""select value from `tabSingles` where doctype='Tortal LMS System Settings' 
-	and field in ('','','')""",as_list=1)
+def create_tortal_group_user_csv():
 	row=[]
 	row.append(frappe.db.get_value("Tortal LMS System Settings", None, "emp_identifier"))
 	row.append(frappe.db.get_value("Tortal LMS System Settings", None, "group_name"))
 	row.append(frappe.db.get_value("Tortal LMS System Settings", None, "group_admin"))
-	print row
-	with open('tortal_group_user_import_template.csv', 'wb') as f_handle:
+
+	private_files = get_files_path().replace("/public/", "/private/")
+	private_files_path=get_bench_path()+"/sites"+private_files.replace("./", "/")
+
+	with open(private_files_path+'/tortal_group_user_import_template.csv', 'wb') as f_handle:
 		writer = csv.writer(f_handle)
 		# Add the header/column names
 		header = ['EmpIdentifier', 'GroupName', 'GroupAdmin']
 		writer.writerow(header)
 		writer.writerow(row)
+	return os.path.realpath(f_handle.name)
+
 
 @frappe.whitelist()
 def create_tortal_user_csv():
-	user_row=[]
 
-	user_details=frappe.db.sql("""select name as username,first_name,middle_name,last_name,email,username,tortal_lms_password,frappe_userid,is_active_tortal_lms_user
-									from `tabUser` 
-									where is_active_tortal_lms_user=1 """,as_list=1)
-	user_row.append(user_details)
+	user_details=frappe.db.sql("""select b.first_name, b.middle_name, b.last_name, b.email, b.username, b.tortal_lms_password,
+								   b.customer_name,b.address_line1,b.address_line2,b.city,b.state,b.pincode,b.frappe_userid,b.is_active_tortal_lms_user
+								from (
+									select t.*, row_number() over (partition by name order by ord desc, creation desc) rn 
+								from
+								(
+								select full_name as name, first_name,middle_name,last_name,email,username,tortal_lms_password,frappe_userid,is_active_tortal_lms_user,
+    							dl.parent, addr.address_line1,addr.address_line2,addr.city,addr.state,addr.pincode,cus.customer_name,
+								case when addr.is_primary_address=1 then 1 else 0 end ord, coalesce(addr.creation, '1900-01-01') creation
+								from `tabUser` usr
+								left outer join `tabCustomer` cus on cus.name = usr.full_name
+								left outer join `tabDynamic Link` dl on dl.parenttype='Address' 
+								and dl.link_doctype='Customer' and dl.link_name=usr.full_name
+								left outer join tabAddress addr on addr.name = dl.parent										
+								) t
+								) b where rn = 1 and is_active_tortal_lms_user=1""",as_list=1)
+	private_files = get_files_path().replace("/public/", "/private/")
+	private_files_path=get_bench_path()+"/sites"+private_files.replace("./", "/")
 
-	user_company_name=frappe.db.sql("""select customer_name 
-										from `tabCustomer`inner join `tabUser` on (
-										`tabCustomer`.name=`tabUser`.full_name)
-										where `tabUser`.name=%s""",username,as_list=1)
-	user_row.append(user_company_name)
-
-	user_address=frappe.db.sql("""select `tabAddress`.address_line1,`tabAddress`.address_line2,`tabAddress`.city,`tabAddress`.state,`tabAddress`.pincode  
-									FROM
-										`tabDynamic Link`	
-										inner join `tabAddress` on (
-											`tabAddress`.name=`tabDynamic Link`.parent
-										)
-									where
-										`tabDynamic Link`.link_name=%s and
-										`tabDynamic Link`.docstatus=0 
-										ORDER BY
-										`tabAddress`.is_primary_address asc,
-										`tabAddress`.creation asc
-										LIMIT 1""",username,as_list=1)
-	user_row.append(user_address)
-
-	print user_row
-	with open('tortal_user_import_template.csv', 'wb') as f_handle:
+	with open(private_files_path+'/tortal_user_import_template.csv', 'wb') as f_handle:
 		writer = csv.writer(f_handle)
 		# Add the header/column names
 		header = ['First Name','Middle Name','Last Name','Email','Username','Password','Company','Address1','Address2','City','State','Postal Code','Identifier','IsActive']
 		writer.writerow(header)
-		writer.writerow(user_row)
-
+		for row in user_details:
+			writer.writerow(row)
+	return os.path.realpath(f_handle.name)
 
 def ftp_connect():
 	IP=frappe.db.get_value("Tortal LMS System Settings", None, "ftp_address")
 	ftpuser=frappe.db.get_value("Tortal LMS System Settings", None, "ftp_username")
 	ftppwd=frappe.db.get_value("Tortal LMS System Settings", None, "ftp_password")
-	print IP
-	print ftpuser
-	print ftppwd
 	ftp = ftplib.FTP(IP)
 	ftp.login(user=ftpuser, passwd = ftppwd)
 	return ftp
 
-def upload(ftp, filename,path=None):
+def upload_to_tortal(ftp, filename,path=None):
 	localfile = open(filename, 'wb')
 	ftp.retrbinary('RETR ' + filename, localfile.write, 1024)
 	ftp.quit()
