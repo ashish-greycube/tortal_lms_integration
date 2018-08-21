@@ -3,9 +3,9 @@
   "docstatus": 0, 
   "doctype": "Custom Script", 
   "dt": "User", 
-  "modified": "2018-08-19 12:54:47.962415", 
+  "modified": "2018-08-21 07:22:59.140594", 
   "name": "User-Client", 
-  "script": "frappe.ui.form.on(\"User\", {\n    is_active_tortal_lms_user: function (frm, cdt, cdn) {\n        if (frm.doc.is_active_tortal_lms_user == 1)\n            var length = 8,\n                charset = \"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\",\n                retVal = \"\";\n        for (var i = 0, n = charset.length; i < length; ++i) {\n            retVal += charset.charAt(Math.floor(Math.random() * n));\n        }\n        frm.set_value('tortal_lms_password', retVal)\n    }\n});", 
+  "script": "frappe.ui.form.on(\"User\", {\n    is_active_tortal_lms_user: function (frm, cdt, cdn) {\n        if (frm.doc.is_active_tortal_lms_user == 1) {\n            var length = 8,\n                charset = \"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\",\n                retVal = \"\";\n            for (var i = 0, n = charset.length; i < length; ++i) {\n                retVal += charset.charAt(Math.floor(Math.random() * n));\n            }\n            frm.set_value('tortal_lms_password', retVal)\n            if ($(\"[data-user-role='Tortal LMS']\").find('input[type=checkbox]').is(\":checked\") == false) {\n                $(\"[data-user-role='Tortal LMS']\").find('input[type=checkbox]').trigger('click')\n            }\n        }\n        if (frm.doc.is_active_tortal_lms_user == 0) {\n            if ($(\"[data-user-role='Tortal LMS']\").find('input[type=checkbox]').is(\":checked\") == true) {\n                $(\"[data-user-role='Tortal LMS']\").find('input[type=checkbox]').trigger('click')\n            }\n        }\n    }\n});", 
   "script_type": "Client"
  }
 ]

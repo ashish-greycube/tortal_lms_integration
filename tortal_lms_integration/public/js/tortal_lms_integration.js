@@ -1,4 +1,5 @@
-$(document).ready(function () {
+// To be placed in script section of web page with route training-portal
+$(function () {
     window.full_name = getCookie("full_name");
     var logged_in = getCookie("sid") && getCookie("sid") !== "Guest";
     if (window.location.pathname == '/training-portal') {
@@ -28,5 +29,6 @@ $(document).ready(function () {
             })
         }
     }
-
 });
+// HTML code for web page
+// <div><a class="tortal" href="http://empowery.tortal.net" target="_blank"><b><span style="font-size: 18px;">Empowery Learning Management System</span></b></a><br></div>

@@ -20,7 +20,7 @@ app_license = "MIT"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/tortal_lms_integration/css/tortal_lms_integration.css"
-web_include_js = "/assets/tortal_lms_integration/js/tortal_lms_integration.js"
+# web_include_js = "/assets/tortal_lms_integration/js/tortal_lms_integration.js"
 
 # include js in page
 # page_js = {"page" : "public/js/file.js"}
@@ -126,6 +126,12 @@ fixtures = [
 		"dt":"Custom Script",
 		"filters":[
 			["name", "in", ["User-Client"]],
+		]
+	},
+	{
+		"dt":"Role",
+		"filters":[
+			["name", "in", ["Tortal LMS"]],
 		]
 	}
 ]

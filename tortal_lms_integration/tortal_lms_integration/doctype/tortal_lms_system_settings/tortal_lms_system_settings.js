@@ -17,6 +17,10 @@ frappe.ui.form.on('Tortal LMS System Settings', {
 						if(!r.exc) {
 							frappe.msgprint(__("Tortal Upload complete!"));
 							frm.dashboard.clear_headline();
+							window.setTimeout(function () {
+								window.location.reload();
+							}, 3000);
+							
 						}
 					}
 				});

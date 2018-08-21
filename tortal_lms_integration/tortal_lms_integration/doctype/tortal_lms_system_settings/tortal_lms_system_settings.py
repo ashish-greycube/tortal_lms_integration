@@ -44,11 +44,14 @@ def take_uploads_if(freq):
 @frappe.whitelist()
 def take_upload_to_tortal():
 	try:
-		file_group_user_csv=create_tortal_group_user_csv()
-		file_tortal_user_csv=create_tortal_user_csv()
+		group_user_filename='tortal_group_user_import_template.csv'
+		user_filename='tortal_user_import_template.csv'
+		file_group_user_csv=create_tortal_group_user_csv(group_user_filename)
+		file_tortal_user_csv=create_tortal_user_csv(user_filename)
 		ftp=ftp_connect()
-		upload_to_tortal(ftp,file_group_user_csv)
-		upload_to_tortal(ftp,file_tortal_user_csv)
+		upload_to_tortal(ftp,group_user_filename,file_group_user_csv)
+		upload_to_tortal(ftp,user_filename,file_tortal_user_csv)
+		ftp.quit()
 		send_email(True, "Tortal LMS System Settings")
 		frappe.db.begin()
 		frappe.db.set_value('Tortal LMS System Settings', 'Tortal LMS System Settings', 'last_upload_date', datetime.now())
@@ -65,14 +68,14 @@ def send_email(success, service_name, error_status=None):
 			return
 
 		subject = "Tortal FTP Upload Successful"
-		message = """<h3>Backup Uploaded Successfully! </h3><p>Hi there, this is just to inform you
-		that your files were successfully uploaded to Tortal system. So relax!</p> """
+		message = """<h3>Backup Uploaded Successfully! on %s</h3><p>Hi there, this is just to inform you
+		that your files were successfully uploaded to Tortal system. So relax!</p> """% (datetime.now())
 
 	else:
 		subject = "[Warning] Tortal FTP Upload Failed"
-		message = """<h3>Upload Failed! </h3><p>Oops, your automated upload to Tortal system failed.
+		message = """<h3>Upload Failed! on %s </h3><p>Oops, your automated upload to Tortal system failed.
 		</p> <p>Error message: %s</p> <p>Please contact your system manager
-		for more information.</p>""" % error_status
+		for more information.</p>""" % (datetime.now(),error_status)
 
 	if not frappe.db:
 		frappe.connect()
@@ -82,8 +85,7 @@ def send_email(success, service_name, error_status=None):
 		frappe.sendmail(recipients=recipients, subject=subject, message=message)
 
 
-@frappe.whitelist()
-def create_tortal_group_user_csv():
+def create_tortal_group_user_csv(filename):
 	row=[]
 	row.append(frappe.db.get_value("Tortal LMS System Settings", None, "emp_identifier"))
 	row.append(frappe.db.get_value("Tortal LMS System Settings", None, "group_name"))
@@ -92,7 +94,7 @@ def create_tortal_group_user_csv():
 	private_files = get_files_path().replace("/public/", "/private/")
 	private_files_path=get_bench_path()+"/sites"+private_files.replace("./", "/")
 
-	with open(private_files_path+'/tortal_group_user_import_template.csv', 'wb') as f_handle:
+	with open(private_files_path+'/'+filename, 'wb') as f_handle:
 		writer = csv.writer(f_handle)
 		# Add the header/column names
 		header = ['EmpIdentifier', 'GroupName', 'GroupAdmin']
@@ -101,29 +103,28 @@ def create_tortal_group_user_csv():
 	return os.path.realpath(f_handle.name)
 
 
-@frappe.whitelist()
-def create_tortal_user_csv():
+def create_tortal_user_csv(filename):
 
-	user_details=frappe.db.sql("""select b.first_name, b.middle_name, b.last_name, b.email, b.username, b.tortal_lms_password,
-								   b.customer_name,b.address_line1,b.address_line2,b.city,b.state,b.pincode,b.frappe_userid,b.is_active_tortal_lms_user
-								from (
-									select t.*, row_number() over (partition by name order by ord desc, creation desc) rn 
-								from
-								(
-								select full_name as name, first_name,middle_name,last_name,email,username,tortal_lms_password,frappe_userid,is_active_tortal_lms_user,
-    							dl.parent, addr.address_line1,addr.address_line2,addr.city,addr.state,addr.pincode,cus.customer_name,
-								case when addr.is_primary_address=1 then 1 else 0 end ord, coalesce(addr.creation, '1900-01-01') creation
-								from `tabUser` usr
-								left outer join `tabCustomer` cus on cus.name = usr.full_name
-								left outer join `tabDynamic Link` dl on dl.parenttype='Address' 
-								and dl.link_doctype='Customer' and dl.link_name=usr.full_name
-								left outer join tabAddress addr on addr.name = dl.parent										
-								) t
-								) b where rn = 1 and is_active_tortal_lms_user=1""",as_list=1)
+	user_details=frappe.db.sql("""select t.first_name, t.middle_name, t.last_name, t.email, t.username, t.tortal_lms_password,
+	   t.customer_name,t.address_line1,t.address_line2,t.city,t.state,t.pincode,t.frappe_userid,t.is_active_tortal_lms_user 
+from ( select      @row_number:=CASE
+		WHEN @customer_no = full_name THEN @row_number + 1
+        ELSE 1
+    	END AS num,
+    	@customer_no:=full_name as CustomerNumber,
+		full_name, first_name,middle_name,last_name,email,username,tortal_lms_password,frappe_userid,is_active_tortal_lms_user,
+    	dl.parent, addr.address_line1,addr.address_line2,addr.city,addr.state,addr.pincode,cus.customer_name,
+			case when addr.is_primary_address=1 then 1 else 0 end ord, coalesce(addr.creation, '1900-01-01') creation
+			from `tabUser` usr
+			left outer join `tabCustomer` cus on cus.name = usr.full_name
+			left outer join `tabDynamic Link` dl on dl.parenttype='Address' 
+			and dl.link_doctype='Customer' and dl.link_name=usr.full_name
+			left outer join tabAddress addr on addr.name = dl.parent,(SELECT @customer_no:=0,@row_number:=0) as k
+	) t where t.num = 1 and t.is_active_tortal_lms_user=1""",as_list=1)
 	private_files = get_files_path().replace("/public/", "/private/")
 	private_files_path=get_bench_path()+"/sites"+private_files.replace("./", "/")
 
-	with open(private_files_path+'/tortal_user_import_template.csv', 'wb') as f_handle:
+	with open(private_files_path+'/'+filename, 'wb') as f_handle:
 		writer = csv.writer(f_handle)
 		# Add the header/column names
 		header = ['First Name','Middle Name','Last Name','Email','Username','Password','Company','Address1','Address2','City','State','Postal Code','Identifier','IsActive']
@@ -140,10 +141,9 @@ def ftp_connect():
 	ftp.login(user=ftpuser, passwd = ftppwd)
 	return ftp
 
-def upload_to_tortal(ftp, filename,path=None):
-	localfile = open(filename, 'wb')
-	ftp.retrbinary('RETR ' + filename, localfile.write, 1024)
-	ftp.quit()
+def upload_to_tortal(ftp, filename,path):
+	localfile = open(path, 'rb')
+	ftp.storbinary('STOR '+filename, localfile)
 	localfile.close()
 
 @frappe.whitelist()
@@ -157,4 +157,4 @@ def generate_tortal_link(username):
 		tortal_link=tortal_sso_url+guid+'&username='+username
 		return tortal_link
 	else:
-		return 'non-active-user'	
+		return 'non-active-user'
