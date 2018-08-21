@@ -53,9 +53,7 @@ def take_upload_to_tortal():
 		upload_to_tortal(ftp,user_filename,file_tortal_user_csv)
 		ftp.quit()
 		send_email(True, "Tortal LMS System Settings")
-		frappe.db.begin()
 		frappe.db.set_value('Tortal LMS System Settings', 'Tortal LMS System Settings', 'last_upload_date', datetime.now())
-		frappe.db.commit()
 	except Exception:
 		error_message = frappe.get_traceback()
 		frappe.errprint(error_message)
