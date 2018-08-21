@@ -100,11 +100,10 @@ def create_tortal_group_user_csv(filename):
 		writer.writerow(row)
 	return os.path.realpath(f_handle.name)
 
-
 def create_tortal_user_csv(filename):
-
+	EmpIdentifier=frappe.db.get_value("Tortal LMS System Settings", None, "emp_identifier")
 	user_details=frappe.db.sql("""select t.first_name, t.middle_name, t.last_name, t.email, t.username, t.tortal_lms_password,
-	   t.customer_name,t.address_line1,t.address_line2,t.city,t.state,t.pincode,t.frappe_userid,t.is_active_tortal_lms_user 
+	   t.customer_name,t.address_line1,t.address_line2,t.city,t.state,t.pincode,'{0}',t.is_active_tortal_lms_user 
 from ( select      @row_number:=CASE
 		WHEN @customer_no = full_name THEN @row_number + 1
         ELSE 1
@@ -118,7 +117,7 @@ from ( select      @row_number:=CASE
 			left outer join `tabDynamic Link` dl on dl.parenttype='Address' 
 			and dl.link_doctype='Customer' and dl.link_name=usr.full_name
 			left outer join tabAddress addr on addr.name = dl.parent,(SELECT @customer_no:=0,@row_number:=0) as k
-	) t where t.num = 1 and t.is_active_tortal_lms_user=1""",as_list=1)
+	) t where t.num = 1 and t.is_active_tortal_lms_user=1""".format(EmpIdentifier),as_list=1)
 	private_files = get_files_path().replace("/public/", "/private/")
 	private_files_path=get_bench_path()+"/sites"+private_files.replace("./", "/")
 
