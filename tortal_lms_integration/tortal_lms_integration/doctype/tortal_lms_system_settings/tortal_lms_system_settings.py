@@ -32,11 +32,11 @@ def take_uploads_if(freq):
 		upload_frequency = frappe.db.get_value("Tortal LMS System Settings", None, "frequency")
 		if upload_frequency == freq:
 			take_upload_to_tortal()
-		elif freq == "Hourly" and upload_frequency in ["Every 6 Hours","Every 12 Hours"]:
+		elif freq == "Hourly" and upload_frequency in ["Every 6 hours","Every 12 hours"]:
 			last_upload_date = frappe.db.get_value('Tortal LMS System Settings', None, 'last_upload_date')
-			if upload_frequency == "Every 6 Hours":
+			if upload_frequency == "Every 6 hours":
 				upload_interval = 6
-			elif upload_frequency == "Every 12 Hours":
+			elif upload_frequency == "Every 12 hours":
 				upload_interval = 12
 			if datetime.now() - get_datetime(last_upload_date) >= timedelta(hours = upload_interval):
 				take_upload_to_tortal()	
