@@ -102,7 +102,7 @@ def create_tortal_group_user_csv(filename):
 def create_tortal_user_csv(filename):
 	EmpIdentifier=frappe.db.get_value("Tortal LMS System Settings", None, "emp_identifier")
 	user_details=frappe.db.sql("""select t.first_name, t.middle_name, t.last_name, t.email, t.username, t.tortal_lms_password,
-	   t.customer_name,t.address_line1,t.address_line2,t.city,t.state,t.pincode,t.frappe_userid,t.is_active_tortal_lms_user 
+	   t.customer_name,t.address_line1,t.address_line2,t.city,t.state,t.pincode,t.email,t.is_active_tortal_lms_user 
 from ( select      @row_number:=CASE
 		WHEN @customer_no = full_name THEN @row_number + 1
         ELSE 1
