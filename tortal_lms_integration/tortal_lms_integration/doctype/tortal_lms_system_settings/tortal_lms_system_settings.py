@@ -94,8 +94,8 @@ def create_tortal_group_user_csv(filename):
 	with open(private_files_path+'/'+filename, 'wb') as f_handle:
 		writer = csv.writer(f_handle)
 		# Add the header/column names
-		header = ['EmpIdentifier', 'GroupName', 'GroupAdmin']
-		writer.writerow(header)
+		# header = ['EmpIdentifier', 'GroupName', 'GroupAdmin']
+		# writer.writerow(header)
 		writer.writerow(row)
 	return os.path.realpath(f_handle.name)
 
@@ -116,15 +116,15 @@ from ( select      @row_number:=CASE
 			left outer join `tabDynamic Link` dl on dl.parenttype='Address' 
 			and dl.link_doctype='Customer' and dl.link_name=usr.full_name
 			left outer join tabAddress addr on addr.name = dl.parent,(SELECT @customer_no:=0,@row_number:=0) as k
-	) t where t.num = 1 and t.is_active_tortal_lms_user=1""".format(EmpIdentifier),as_list=1)
+	) t where t.num = 1 """.format(EmpIdentifier),as_list=1)
 	private_files = get_files_path().replace("/public/", "/private/")
 	private_files_path=get_bench_path()+"/sites"+private_files.replace("./", "/")
 
 	with open(private_files_path+'/'+filename, 'wb') as f_handle:
 		writer = csv.writer(f_handle)
 		# Add the header/column names
-		header = ['First Name','Middle Name','Last Name','Email','Username','Password','Company','Address1','Address2','City','State','Postal Code','Identifier','IsActive']
-		writer.writerow(header)
+		# header = ['First Name','Middle Name','Last Name','Email','Username','Password','Company','Address1','Address2','City','State','Postal Code','Identifier','IsActive']
+		# writer.writerow(header)
 		for row in user_details:
 			writer.writerow(row)
 	return os.path.realpath(f_handle.name)
