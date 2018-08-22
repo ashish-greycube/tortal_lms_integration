@@ -82,13 +82,12 @@ def send_email(success, service_name, error_status=None):
 		recipients = split_emails(frappe.db.get_value("Tortal LMS System Settings", None, "notification_email"))
 		frappe.sendmail(recipients=recipients, subject=subject, message=message)
 
-
 def create_tortal_group_user_csv(filename):
 	row=[]
 	row.append(frappe.db.get_value("Tortal LMS System Settings", None, "emp_identifier"))
 	row.append(frappe.db.get_value("Tortal LMS System Settings", None, "group_name"))
-	row.append(frappe.db.get_value("Tortal LMS System Settings", None, "group_admin"))
-
+	# row.append(frappe.db.get_value("Tortal LMS System Settings", None, "group_admin"))
+	row.append('1')
 	private_files = get_files_path().replace("/public/", "/private/")
 	private_files_path=get_bench_path()+"/sites"+private_files.replace("./", "/")
 
