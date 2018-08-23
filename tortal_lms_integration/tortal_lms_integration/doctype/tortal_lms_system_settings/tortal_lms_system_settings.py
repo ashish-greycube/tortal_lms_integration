@@ -107,22 +107,9 @@ def create_tortal_group_user_csv(filename):
 
 def create_tortal_user_csv(filename):
 	EmpIdentifier=frappe.db.get_value("Tortal LMS System Settings", None, "emp_identifier")
-	user_details=frappe.db.sql("""select t.first_name, t.middle_name, t.last_name, t.email, t.username, t.tortal_lms_password,
-	   t.customer_name,t.address_line1,t.address_line2,t.city,t.state,t.pincode,t.frappe_userid,t.is_active_tortal_lms_user 
-from ( select      @row_number:=CASE
-		WHEN @customer_no = full_name THEN @row_number + 1
-        ELSE 1
-    	END AS num,
-    	@customer_no:=full_name as CustomerNumber,
-		full_name, first_name,middle_name,last_name,email,username,tortal_lms_password,frappe_userid,is_active_tortal_lms_user,
-    	dl.parent, addr.address_line1,addr.address_line2,addr.city,addr.state,addr.pincode,cus.customer_name,
-			case when addr.is_primary_address=1 then 1 else 0 end ord, coalesce(addr.creation, '1900-01-01') creation
-			from `tabUser` usr
-			left outer join `tabCustomer` cus on cus.name = usr.full_name
-			left outer join `tabDynamic Link` dl on dl.parenttype='Address' 
-			and dl.link_doctype='Customer' and dl.link_name=usr.full_name
-			left outer join tabAddress addr on addr.name = dl.parent,(SELECT @customer_no:=0,@row_number:=0) as k
-	) t where t.num = 1 and t.frappe_userid IS NOT NULL """,as_list=1)
+	user_details=frappe.db.sql("""select first_name,middle_name,last_name,email,username,
+	tortal_lms_password,'','','','','','',frappe_userid,is_active_tortal_lms_user 
+	from `tabUser` where frappe_userid IS NOT NULL """,as_list=1)
 	private_files = get_files_path().replace("/public/", "/private/")
 	private_files_path=get_bench_path()+"/sites"+private_files.replace("./", "/")
 
