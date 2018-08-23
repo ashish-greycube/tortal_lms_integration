@@ -83,11 +83,15 @@ def send_email(success, service_name, error_status=None):
 		frappe.sendmail(recipients=recipients, subject=subject, message=message)
 
 def create_tortal_group_user_csv(filename):
-	row=[]
-	row.append(frappe.db.get_value("Tortal LMS System Settings", None, "emp_identifier"))
-	row.append(frappe.db.get_value("Tortal LMS System Settings", None, "group_name"))
-	# row.append(frappe.db.get_value("Tortal LMS System Settings", None, "group_admin"))
-	row.append('1')
+	GroupIdentifier=frappe.db.get_value("Tortal LMS System Settings", None, "group_name")
+	GroupAdmin= frappe.db.get_value("Tortal LMS System Settings", None, "emp_identifier")
+
+	group_admin_details=frappe.db.sql("""select frappe_userid,'{group}','{groupadmin}' from `tabUser` 
+	where frappe_userid IS NOT NULL and name =%s""".format(group=GroupIdentifier,groupadmin='1'),GroupAdmin,as_list=1)
+
+	group_details=frappe.db.sql("""select frappe_userid,'{group}','{groupadmin}' from `tabUser` 
+	where frappe_userid IS NOT NULL and name !=%s """.format(group=GroupIdentifier,groupadmin='0'),GroupAdmin,as_list=1)
+
 	private_files = get_files_path().replace("/public/", "/private/")
 	private_files_path=get_bench_path()+"/sites"+private_files.replace("./", "/")
 
@@ -95,14 +99,16 @@ def create_tortal_group_user_csv(filename):
 		writer = csv.writer(f_handle)
 		# Add the header/column names
 		# header = ['EmpIdentifier', 'GroupName', 'GroupAdmin']
-		# writer.writerow(header)
-		writer.writerow(row)
+		for row in group_admin_details:
+			writer.writerow(row)
+		for row in group_details:
+			writer.writerow(row)
 	return os.path.realpath(f_handle.name)
 
 def create_tortal_user_csv(filename):
 	EmpIdentifier=frappe.db.get_value("Tortal LMS System Settings", None, "emp_identifier")
 	user_details=frappe.db.sql("""select t.first_name, t.middle_name, t.last_name, t.email, t.username, t.tortal_lms_password,
-	   t.customer_name,t.address_line1,t.address_line2,t.city,t.state,t.pincode,t.email,t.is_active_tortal_lms_user 
+	   t.customer_name,t.address_line1,t.address_line2,t.city,t.state,t.pincode,t.frappe_userid,t.is_active_tortal_lms_user 
 from ( select      @row_number:=CASE
 		WHEN @customer_no = full_name THEN @row_number + 1
         ELSE 1
@@ -116,7 +122,7 @@ from ( select      @row_number:=CASE
 			left outer join `tabDynamic Link` dl on dl.parenttype='Address' 
 			and dl.link_doctype='Customer' and dl.link_name=usr.full_name
 			left outer join tabAddress addr on addr.name = dl.parent,(SELECT @customer_no:=0,@row_number:=0) as k
-	) t where t.num = 1 """,as_list=1)
+	) t where t.num = 1 and t.frappe_userid IS NOT NULL """,as_list=1)
 	private_files = get_files_path().replace("/public/", "/private/")
 	private_files_path=get_bench_path()+"/sites"+private_files.replace("./", "/")
 
