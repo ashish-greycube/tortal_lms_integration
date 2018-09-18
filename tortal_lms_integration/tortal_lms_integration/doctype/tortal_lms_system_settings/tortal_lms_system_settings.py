@@ -48,6 +48,7 @@ def take_upload_to_tortal():
 		user_filename='tortal_user_import_template.csv'
 		file_group_user_csv=create_tortal_group_user_csv(group_user_filename)
 		file_tortal_user_csv=create_tortal_user_csv(user_filename)
+
 		ftp=ftp_connect()
 		upload_to_tortal(ftp,group_user_filename,file_group_user_csv)
 		upload_to_tortal(ftp,user_filename,file_tortal_user_csv)
@@ -86,11 +87,69 @@ def create_tortal_group_user_csv(filename):
 	GroupIdentifier=frappe.db.get_value("Tortal LMS System Settings", None, "group_name")
 	GroupAdmin= frappe.db.get_value("Tortal LMS System Settings", None, "emp_identifier")
 
-	group_admin_details=frappe.db.sql("""select frappe_userid,'{group}','{groupadmin}' from `tabUser` 
-	where frappe_userid IS NOT NULL and name =%s""".format(group=GroupIdentifier,groupadmin='1'),GroupAdmin,as_list=1)
+# system user - group admin
+	parent_admin_details=frappe.db.sql("""select frappe_userid,'{group}','{groupadmin}' from `tabUser` 
+	where frappe_userid IS NOT NULL 
+	and user_type='System User' 
+	and is_active_tortal_lms_user=1 
+	and name =%s""".format(group=GroupIdentifier,groupadmin='1'),GroupAdmin,as_list=1)
 
-	group_details=frappe.db.sql("""select frappe_userid,'{group}','{groupadmin}' from `tabUser` 
-	where frappe_userid IS NOT NULL and name !=%s """.format(group=GroupIdentifier,groupadmin='0'),GroupAdmin,as_list=1)
+# system user - non group admin
+	parent_normal_details=frappe.db.sql("""select frappe_userid,'{group}','{groupadmin}' from `tabUser` 
+	where frappe_userid IS NOT NULL 
+	and user_type='System User' 
+	and is_active_tortal_lms_user=1 
+	and name  !=%s """.format(group=GroupIdentifier,groupadmin='0'),GroupAdmin,as_list=1)
+
+# website user - group admin for their particular company
+	website_admin_details=frappe.db.sql("""select user.frappe_userid,replace(customer.link_name,' ','_') as company,'{groupadmin}'
+            from `tabContact` contact
+            inner join `tabDynamic Link` customer on
+            customer.parent=contact.name
+            inner join `tabCustomer` cust on
+            cust.name=customer.link_name
+            inner join `tabUser` user on
+            contact.user=user.name
+            where customer.link_doctype='Customer' 
+            and customer.parenttype='Contact' 
+            and user.frappe_userid is not null
+            and user_type='Website User'
+            and user.is_active_tortal_lms_user=1
+			and contact.is_primary_contact=1
+            and customer_type in ('Company','Individual')""".format(groupadmin='1'),as_list=1)	
+
+# website user - non group admin for their particular company
+	website_normal_details=frappe.db.sql("""select user.frappe_userid,replace(customer.link_name,' ','_') as company,'{groupadmin}'
+            from `tabContact` contact
+            inner join `tabDynamic Link` customer on
+            customer.parent=contact.name
+            inner join `tabCustomer` cust on
+            cust.name=customer.link_name
+            inner join `tabUser` user on
+            contact.user=user.name
+            where customer.link_doctype='Customer' 
+            and customer.parenttype='Contact' 
+            and user.frappe_userid is not null
+            and user_type='Website User'
+            and user.is_active_tortal_lms_user=1
+			and contact.is_primary_contact=0
+            and customer_type in ('Company','Individual')""".format(groupadmin='0'),as_list=1)
+
+# website user - group admin/normal user give access to parent company
+	website_parent_admin_normal_details=frappe.db.sql("""select user.frappe_userid,'{group}','{groupadmin}'
+            from `tabContact` contact
+            inner join `tabDynamic Link` customer on
+            customer.parent=contact.name
+            inner join `tabCustomer` cust on
+            cust.name=customer.link_name
+            inner join `tabUser` user on
+            contact.user=user.name
+            where customer.link_doctype='Customer' 
+            and customer.parenttype='Contact' 
+            and user.frappe_userid is not null
+            and user_type='Website User'
+            and user.is_active_tortal_lms_user=1
+            and customer_type in ('Company','Individual')""".format(group=GroupIdentifier,groupadmin='0'),as_list=1)
 
 	private_files = get_files_path().replace("/public/", "/private/")
 	private_files_path=get_bench_path()+"/sites"+private_files.replace("./", "/")
@@ -99,17 +158,52 @@ def create_tortal_group_user_csv(filename):
 		writer = csv.writer(f_handle)
 		# Add the header/column names
 		# header = ['EmpIdentifier', 'GroupName', 'GroupAdmin']
-		for row in group_admin_details:
+		for row in parent_admin_details:
 			writer.writerow(row)
-		for row in group_details:
+		for row in parent_normal_details:
 			writer.writerow(row)
+		for row in website_admin_details:
+			writer.writerow(row)
+		for row in website_normal_details:
+			writer.writerow(row)
+		for row in website_parent_admin_normal_details:
+			writer.writerow(row)
+
 	return os.path.realpath(f_handle.name)
 
 def create_tortal_user_csv(filename):
 	EmpIdentifier=frappe.db.get_value("Tortal LMS System Settings", None, "emp_identifier")
-	user_details=frappe.db.sql("""select first_name,middle_name,last_name,email,username,
+
+	# list of system users
+	system_user_details=frappe.db.sql("""select first_name,middle_name,last_name,email,username,
 	tortal_lms_password,'','','','','','',frappe_userid,is_active_tortal_lms_user 
-	from `tabUser` where frappe_userid IS NOT NULL """,as_list=1)
+	from `tabUser` 
+    where frappe_userid IS NOT NULL 
+    and is_active_tortal_lms_user=1
+    and user_type='System User' """,as_list=1)
+	private_files = get_files_path().replace("/public/", "/private/")
+	private_files_path=get_bench_path()+"/sites"+private_files.replace("./", "/")
+
+	# list of website users having company
+	website_user_details=frappe.db.sql("""select first_name,middle_name,last_name,email,username,
+	tortal_lms_password,'','','','','','',frappe_userid,is_active_tortal_lms_user 
+	from `tabUser` 
+    where frappe_userid IS NOT NULL and is_active_tortal_lms_user=1
+    and user_type='Website User' 
+    and frappe_userid in(
+			select user.frappe_userid
+            from `tabContact` contact
+            inner join `tabDynamic Link` customer on
+            customer.parent=contact.name
+            inner join `tabCustomer` cust on
+            cust.name=customer.link_name
+            inner join `tabUser` user on
+            contact.user=user.name
+            where customer.link_doctype='Customer' 
+            and customer.parenttype='Contact' 
+            and user.frappe_userid is not null
+            and user_type='Website User'           
+            and customer_type in ('Company','Individual'))""",as_list=1)
 	private_files = get_files_path().replace("/public/", "/private/")
 	private_files_path=get_bench_path()+"/sites"+private_files.replace("./", "/")
 
@@ -118,7 +212,9 @@ def create_tortal_user_csv(filename):
 		# Add the header/column names
 		# header = ['First Name','Middle Name','Last Name','Email','Username','Password','Company','Address1','Address2','City','State','Postal Code','Identifier','IsActive']
 		# writer.writerow(header)
-		for row in user_details:
+		for row in system_user_details:
+			writer.writerow(row)
+		for row in website_user_details:
 			writer.writerow(row)
 	return os.path.realpath(f_handle.name)
 
